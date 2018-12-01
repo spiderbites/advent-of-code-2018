@@ -19,5 +19,8 @@ def p2():
             seen.add(val)
 
 
-print(p1())
-print(p2())
+if __name__ == "__main__":
+    import sys
+    part = sys.argv[1]
+    answer = p1() if part == '1' else p2()
+    print(answer)
