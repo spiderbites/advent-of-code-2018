@@ -1,5 +1,4 @@
 import re
-from collections import Counter
 
 
 def p1(claims):
