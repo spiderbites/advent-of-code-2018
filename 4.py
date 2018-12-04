@@ -15,17 +15,11 @@ def parse_instruction(i):
 
 
 def parse_record(record):
-    match = re.match(r'\[\d{4}-(\d{2}-\d{2}) (\d{2}:\d{2})\] (.*)', record)
+    match = re.match(r'\[\d{4}-\d{2}-\d{2} \d{2}:(\d{2})\] (.*)', record)
     guard = re.search(r'#(\d+)', record)
-    if match and match.group(2).startswith('23'):
-        time = match.group(2)[3:]
-    else:
-        time = match.group(2)[3:]
-
     return {
-        "day": match.group(1),
-        "time": int(time),
-        "i": parse_instruction(match.group(3)),
+        "time": int(match.group(1)),
+        "i": parse_instruction(match.group(2)),
         "g": int(guard.group(1)) if guard != None else None
     }
 
@@ -36,13 +30,14 @@ def p1(records):
     guard_total_mins_asleep = {}
     curr_guard = None
     minute = 0
+
     for record in records:
         r = parse_record(record)
         if r["i"] == BEGINS:
             curr_guard = r["g"]
             if r["g"] not in guard_mins_asleep:
-                guard_mins_asleep[r["g"]] = [0 for i in range(60)]
-                guard_total_mins_asleep[r["g"]] = 0
+                guard_mins_asleep[curr_guard] = [0 for i in range(60)]
+                guard_total_mins_asleep[curr_guard] = 0
             minute = 0
         elif r["i"] == ASLEEP:
             minute = r["time"]
