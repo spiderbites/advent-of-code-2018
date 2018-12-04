@@ -19,7 +19,7 @@ def build_map(claims):
     return mp
 
 
-def p2(lines):
+def p2(claims):
     mp = build_map(claims)
     no_overlaps = set(
         flat_list(list(filter(lambda x: len(x) == 1, mp.values()))))
@@ -53,8 +53,8 @@ def flat_list(lists):
 
 if __name__ == "__main__":
     import sys
-    import utils
-    part = sys.argv[1]
-    claims = utils.file_to_1d_array('inputs/3.txt')
-    answer = p1(claims) if part == '1' else p2(claims)
+    [part, f] = sys.argv[1:]
+    f = open(f, 'r')
+    data = [line.strip() for line in f.readlines()]
+    answer = p1(data) if part == '1' else p2(data)
     print(answer)

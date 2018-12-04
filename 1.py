@@ -1,18 +1,13 @@
-import utils
-
-nums = utils.file_to_1d_array('inputs/1.txt')
-
-
-def p1():
-    return sum([int(num) for num in nums])
+def p1(data):
+    return sum([int(num) for num in data])
 
 
-def p2():
+def p2(data):
     val = 0
     seen = set()
     seen.add(0)
     while True:
-        for num in nums:
+        for num in data:
             val += int(num)
             if val in seen:
                 return val
@@ -21,6 +16,8 @@ def p2():
 
 if __name__ == "__main__":
     import sys
-    part = sys.argv[1]
-    answer = p1() if part == '1' else p2()
+    [part, f] = sys.argv[1:]
+    f = open(f, 'r')
+    data = [line.strip() for line in f.readlines()]
+    answer = p1(data) if part == '1' else p2(data)
     print(answer)

@@ -72,8 +72,8 @@ def p2(records):
 
 if __name__ == "__main__":
     import sys
-    import utils
-    part = sys.argv[1]
-    records = utils.file_to_1d_array('inputs/4.txt')
-    answer = p1(records) if part == '1' else p2(records)
+    [part, f] = sys.argv[1:]
+    f = open(f, 'r')
+    data = [line.strip() for line in f.readlines()]
+    answer = p1(data) if part == '1' else p2(data)
     print(answer)

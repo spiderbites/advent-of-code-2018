@@ -29,8 +29,8 @@ def common(w1, w2):
 
 if __name__ == "__main__":
     import sys
-    import utils
-    part = sys.argv[1]
-    words = utils.file_to_1d_array('inputs/2.txt')
-    answer = p1(words) if part == '1' else p2(words)
+    [part, f] = sys.argv[1:]
+    f = open(f, 'r')
+    data = [line.strip() for line in f.readlines()]
+    answer = p1(data) if part == '1' else p2(data)
     print(answer)
