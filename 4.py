@@ -24,7 +24,7 @@ def parse_record(record):
     }
 
 
-def p1(records):
+def do_it(records):
     records.sort()
     guard_mins_asleep = {}
     guard_total_mins_asleep = {}
@@ -46,6 +46,12 @@ def p1(records):
                 guard_mins_asleep[curr_guard][i] += 1
             guard_total_mins_asleep[curr_guard] += r["time"] - minute
 
+    return (guard_mins_asleep, guard_total_mins_asleep)
+
+
+def p1(records):
+    (guard_mins_asleep, guard_total_mins_asleep) = do_it(records)
+
     sleepiest_guard = max(guard_total_mins_asleep.items(),
                           key=lambda x: x[1])[0]
 
@@ -55,10 +61,19 @@ def p1(records):
     return sleepiest_guard * sleepiest_minute
 
 
+def p2(records):
+    (guard_mins_asleep, _) = do_it(records)
+    (guard_num, sleeps) = max(guard_mins_asleep.items(),
+                              key=lambda x: max(x[1]))
+    time = sleeps.index(max(sleeps))
+
+    return time * guard_num
+
+
 if __name__ == "__main__":
     import sys
     import utils
     part = sys.argv[1]
     records = utils.file_to_1d_array('inputs/4.txt')
-    answer = p1(records) if part == '1' else 0
+    answer = p1(records) if part == '1' else p2(records)
     print(answer)
