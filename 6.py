@@ -2,11 +2,27 @@ from collections import Counter
 import string
 
 
-def p1(d):
+def get_extents(d):
     min_x = min([i[0] for i in d])
     max_x = max([i[0] for i in d])
     min_y = min([i[1] for i in d])
     max_y = max([i[1] for i in d])
+    return [min_x, max_x, min_y, max_y]
+
+
+def print_grid(g):
+    for line in g:
+        for i in line:
+            print(i, end="")
+        print()
+
+
+def dist(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def p1(d):
+    [min_x, max_x, min_y, max_y] = get_extents(d)
 
     grid = [['.'] * (max_x + 1) for i in range(max_y + 1)]
     ltrs = string.ascii_lowercase + string.ascii_uppercase
@@ -32,22 +48,8 @@ def p1(d):
     return max(near)
 
 
-def print_grid(g):
-    for line in g:
-        for i in line:
-            print(i, end="")
-        print()
-
-
-def dist(a, b):
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
-
-
 def p2(d):
-    min_x = min([i[0] for i in d])
-    max_x = max([i[0] for i in d])
-    min_y = min([i[1] for i in d])
-    max_y = max([i[1] for i in d])
+    [min_x, max_x, min_y, max_y] = get_extents(d)
 
     size = 0
 
