@@ -173,13 +173,10 @@ class Grid:
                 alt = distances[current] + 1
                 if alt <= distances[v]:
                     distances[v] = alt
-                    prev[v].append(current)
+                    prev[v] = current  # .append(current)
                 elif alt < distances[v]:
                     distances[v] = alt
-                    prev[v] = [current]
-
-        if src == '[14, 8]':
-            pdb.set_trace()
+                    prev[v] = current  # [current]
 
         # find closest target
         all_target_distances = {key: value for key,
@@ -196,9 +193,21 @@ class Grid:
             [eval(t) for t in eligible_targets]))
 
         # finding the first step on the path to that target
-        first_steps = self.build_first_steps(src, the_target, prev)
-        the_step = first_in_reading_order(
-            [eval(s) for s in first_steps])
+        # first_steps = self.build_first_steps(src, the_target, prev)
+        # the_step = first_in_reading_order(
+        # [eval(s) for s in [first_steps])
+
+        # pdb.set_trace()
+        possible_steps = self.get_open_adjacent_squares(eval(src))
+        distances = [self.find_distance(step, the_target)
+                     for step in possible_steps]
+        min_distance = min(distances)
+        possible_steps = [s[0] for s in zip(
+            possible_steps, distances) if s[1] == min_distance]
+        the_step = first_in_reading_order(possible_steps)
+
+        # the_step = eval(self.build_first_steps(src, the_target, prev))
+        # pdb.set_trace()
         return the_step
 
     def build_first_steps(self, src, target, prev_map):
@@ -207,17 +216,77 @@ class Grid:
     def build_first_steps_rec(self, src, current, prev_map, last_steps):
         if len(prev_map[current]) == 0 or current == src:
             return last_steps
-        if len(prev_map[current]) == 1:
-            return self.build_first_steps_rec(src, prev_map[current][0], prev_map, [current])
         else:
-            last_steps = []
-            for prev in prev_map[current]:
-                last_steps = self.build_first_steps_rec(
-                    src, prev, prev_map, current)
-                for step in last_steps:
-                    if step not in last_steps:
-                        last_steps.append(step)
-            return last_steps
+            return self.build_first_steps_rec(src, prev_map[current], prev_map, current)
+
+    def find_distance(self, src, target):
+        src = str(src)
+        vertices = [str(v) for v in self.get_open_squares()]
+        vertices.append(src)
+        distances = {v: float('inf') for v in vertices}
+        target = str(target)
+
+        distances[src] = 0
+
+        while len(vertices) > 0:
+            current = min({k: v for (k, v) in distances.items()
+                           if k in vertices}, key=distances.get)
+            vertices.remove(current)
+
+            # if current == target:
+            #     continue
+
+            # break if no targets in vertices
+            if target not in vertices:
+                break
+
+            neighbours = [str(square)
+                          for square in self.adjacent_squares(eval(current))]
+
+            neighbours = [n for n in neighbours if n in vertices and
+                          self.get_square_content(eval(n)) == OPEN]
+
+            for v in neighbours:
+                alt = distances[current] + 1
+                if alt <= distances[v]:
+                    distances[v] = alt
+                elif alt < distances[v]:
+                    distances[v] = alt
+
+        return distances[target]
+
+
+# 1  S ← empty sequence
+# 2  u ← target
+# 3  if prev[u] is defined or u = source:          // Do something only if the vertex is reachable
+# 4      while u is defined:                       // Construct the shortest path with a stack S
+# 5          insert u at the beginning of S        // Push the vertex onto the stack
+# 6          u ← prev[u]                           // Traverse from target to source
+
+    # def find_distance(self, src, current, target, prev_map):
+    #     if len(prev_map[current]) == 0 or current == src:
+    #         return last_steps
+    #     if len(prev_map[current]) == 1:
+    #         return self.build_first_steps_rec(src, prev_map[current][0], prev_map, [current])
+    #     else:
+
+    # def build_first_steps(self, src, target, prev_map):
+    #     return self.build_first_steps_rec(src, target, prev_map, [])
+
+    # def build_first_steps_rec(self, src, current, prev_map, last_steps):
+    #     if len(prev_map[current]) == 0 or current == src:
+    #         return last_steps
+    #     if len(prev_map[current]) == 1:
+    #         return self.build_first_steps_rec(src, prev_map[current][0], prev_map, [current])
+    #     else:
+    #         last_steps = []
+    #         for prev in prev_map[current]:
+    #             last_steps = self.build_first_steps_rec(
+    #                 src, prev, prev_map, current)
+    #             for step in last_steps:
+    #                 if step not in last_steps:
+    #                     last_steps.append(step)
+    #         return last_steps
 
     def attack(self, attacker, attackee):
         attackee.hp = attackee.hp - attacker.ap
