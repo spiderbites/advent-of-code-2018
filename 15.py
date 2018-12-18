@@ -1,9 +1,26 @@
+from timeit import default_timer as timer
+
 import pdb
 
 WALL = '#'
 OPEN = '.'
 GOBLIN = 'G'
 ELF = 'E'
+
+
+def manhattan_dist(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def first_in_reading_order(locations):
+    first = [float('inf'), float('inf')]
+    for loc in locations:
+        if loc[1] < first[1]:
+            first = loc
+        elif loc[1] == first[1]:
+            if loc[0] < first[0]:
+                first = loc
+    return first
 
 
 class Unit:
@@ -51,6 +68,14 @@ class Grid:
         [x, y] = location
         return self.grid[y][x]
 
+    def get_open_squares(self):
+        s = []
+        for y in range(len(self.grid)):
+            for x in range(len(self.grid)):
+                if self.grid[y][x] == OPEN:
+                    s.append([x, y])
+        return s
+
     def units(self):
         units = []
         for y in range(len(self.grid)):
@@ -87,13 +112,6 @@ class Grid:
         adjacent = self.adjacent_squares(location)
         return [[x, y] for [x, y] in adjacent if self.grid[y][x] == OPEN]
 
-    # def open_square_adjacent(self, square):
-    #     adjacent = self.adjacent_squares(square)
-    #     return any([self.grid[y][x] == OPEN for [x, y] in adjacent])
-
-    # def all_in_range(self, t):
-    #     return [unit for unit in self.all_of_type(t) if self.open_square_adjacent(unit.location())]
-
     def adjacent_enemies(self, location, enemy_type):
         adjacent = self.adjacent_squares(location)
         square_contents = [self.get_square_content(a) for a in adjacent]
@@ -103,51 +121,106 @@ class Grid:
         all_enemies = self.all_of_type(enemy_type)
         adjacent = [self.get_open_adjacent_squares(
             e.location()) for e in all_enemies]
-        # flatten
-        return [item for sublist in adjacent for item in sublist]
+        flattened = [item for sublist in adjacent for item in sublist]
+        unique = []
+        for item in flattened:
+            if item not in unique:
+                unique.append(item)
+        return unique
 
-    def find_distance(self, a, b):
-        return self.__find_distance_rec(a, b, 0, [])
+    # def closest(self, location, location_set):
+    #     # pdb.set_trace()
+    #     distances = [{"location": l, "dist": manhattan_dist(
+    #         location, l)} for l in location_set]
+    #     distances.sort(key=lambda x: x["dist"])
+    #     # pick top 5??
+    #     return [d["location"] for d in distances[:5]]
 
-    def __find_distance_rec(self, current, target, d, path):
+    def build_distances(self, src, targets):
+        print(src)
+        # if src == [14, 8]:
+        #     pdb.set_trace()
+        src = str(src)
+        vertices = [str(v) for v in self.get_open_squares()]
+        vertices.append(src)
+        distances = {v: float('inf') for v in vertices}
+        prev = {v: [] for v in vertices}
+        targets = [str(t) for t in targets]
 
-        # def shortest_distance_cmp(d1, d2):
-        #     (distance1, path1) = d1, (distance2, path2) = d2
-        #     if distance1 < distance2:
-        #         return distance1
-        #     return path1[0] < path2[0]
+        distances[src] = 0
 
-        if current == target:
-            return (d, path)
+        # pdb.set_trace()
+
+        while len(vertices) > 0:
+            current = min({k: v for (k, v) in distances.items()
+                           if k in vertices}, key=distances.get)
+            vertices.remove(current)
+
+            if current in targets:
+                continue
+
+            # break if no targets in vertices
+            if all([t not in vertices for t in targets]):
+                break
+
+            neighbours = [str(square)
+                          for square in self.adjacent_squares(eval(current))]
+
+            neighbours = [n for n in neighbours if n in vertices and
+                          self.get_square_content(eval(n)) == OPEN]
+
+            for v in neighbours:
+                alt = distances[current] + 1
+                if alt <= distances[v]:
+                    distances[v] = alt
+                    prev[v].append(current)
+                elif alt < distances[v]:
+                    distances[v] = alt
+                    prev[v] = [current]
+
+        if src == '[14, 8]':
+            pdb.set_trace()
+
+        # find closest target
+        all_target_distances = {key: value for key,
+                                value in distances.items() if key in targets}
+
+        if len(all_target_distances.values()) == 0 or set(all_target_distances.values()) == set([float('inf')]):
+            return None
+
+        min_target_distance = min(all_target_distances.values())
+        eligible_targets = [
+            k for (k, v) in all_target_distances.items() if v == min_target_distance]
+
+        the_target = str(first_in_reading_order(
+            [eval(t) for t in eligible_targets]))
+
+        # finding the first step on the path to that target
+        first_steps = self.build_first_steps(src, the_target, prev)
+        the_step = first_in_reading_order(
+            [eval(s) for s in first_steps])
+        return the_step
+
+    def build_first_steps(self, src, target, prev_map):
+        return self.build_first_steps_rec(src, target, prev_map, [])
+
+    def build_first_steps_rec(self, src, current, prev_map, last_steps):
+        if len(prev_map[current]) == 0 or current == src:
+            return last_steps
+        if len(prev_map[current]) == 1:
+            return self.build_first_steps_rec(src, prev_map[current][0], prev_map, [current])
         else:
-            options = self.adjacent_squares(current)
-            valid_options = [o for o in options if (self.grid[o[1]]
-                                                    [o[0]] == OPEN or o == target) and o not in path]
-
-            if valid_options == []:
-                return (float('inf'), None)
-
-            return min([self.__find_distance_rec(o, target, d + 1, path + [o]) for o in valid_options])
+            last_steps = []
+            for prev in prev_map[current]:
+                last_steps = self.build_first_steps_rec(
+                    src, prev, prev_map, current)
+                for step in last_steps:
+                    if step not in last_steps:
+                        last_steps.append(step)
+            return last_steps
 
     def attack(self, attacker, attackee):
         attackee.hp = attackee.hp - attacker.ap
-
-    def choose_step(self, possible_moves):
-        best = (float('inf'), [[0, 0]])
-        for m in possible_moves:
-            (distance, path) = m
-            if distance < best[0]:
-                best = m
-            # reading order...
-            elif distance == best[0]:
-                [best_x, best_y] = best[1][0]
-                [path_x, path_y] = path[0]
-                if path_y < best_y:
-                    best = m
-                elif path_y == best_y:
-                    if path_x < best_x:
-                        best = m
-        return best[1][0]
 
     def choose_weakest_enemy(self, enemies):
         weakest = Unit(0, 0, float('inf'))
@@ -164,30 +237,23 @@ class Grid:
         return weakest
 
     def turn(self, unit, enemy_type):
-        # pdb.set_trace()
         enemies = self.adjacent_enemies(unit.location(), enemy_type)
 
         # move
         if len(enemies) == 0:
             enemies_in_range = self.enemies_in_range(enemy_type)
+            if len(enemies_in_range) > 0:
+                next_step = self.build_distances(
+                    unit.location(), enemies_in_range)
+                if next_step is not None and next_step != [float('inf'), float('inf')]:
+                    [cur_x, cur_y] = unit.location()
+                    [new_x, new_y] = next_step
 
-            all_moves = [self.find_distance(
-                unit.location(), square) for square in enemies_in_range]
+                    unit.x = new_x
+                    unit.y = new_y
 
-            possible_moves = [
-                move for move in all_moves if move != (float('inf'), None)]
-
-            if len(possible_moves) > 0:
-                next_step = self.choose_step(possible_moves)
-
-                [cur_x, cur_y] = unit.location()
-                [new_x, new_y] = next_step
-
-                unit.x = new_x
-                unit.y = new_y
-
-                self.grid[new_y][new_x] = unit
-                self.grid[cur_y][cur_x] = OPEN
+                    self.grid[new_y][new_x] = unit
+                    self.grid[cur_y][cur_x] = OPEN
 
         enemies = self.adjacent_enemies(unit.location(), enemy_type)
 
@@ -209,15 +275,18 @@ class Grid:
     def run(self):
         num_completed_rounds = 0
         while True:
-            # print([(isinstance(u, Elf), u.hp) for u in self.units()])
+            print('*******************')
+            print(num_completed_rounds)
+            print(self)
+            print('*******************')
             for u in self.units():
                 if self.game_over():
                     return num_completed_rounds * self.total_hitpoints()
-                elif type(u) == Goblin:
-                    # pdb.set_trace()
-                    self.turn(u, Elf)
-                else:
-                    self.turn(u, Goblin)
+                elif u.hp > 0:
+                    if type(u) == Goblin:
+                        self.turn(u, Elf)
+                    else:
+                        self.turn(u, Goblin)
             num_completed_rounds += 1
 
 
@@ -237,7 +306,7 @@ def p2(data):
 if __name__ == "__main__":
     import sys
     [part, f] = sys.argv[1:]
-    f = open('./inputs/15_test_6.txt', 'r')
+    f = open(f, 'r')
     data = [line.strip() for line in f.readlines()]
     answer = p1(data) if part == '1' else p2(data)
     print(answer)
