@@ -17,7 +17,7 @@ def print_grid(g):
         print()
 
 
-def dist(a, b):
+def manhattan_distance(a, b):
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
@@ -25,6 +25,7 @@ def p1(d):
     [min_x, max_x, min_y, max_y] = get_extents(d)
 
     grid = [['.'] * (max_x + 1) for i in range(max_y + 1)]
+
     ltrs = string.ascii_lowercase + string.ascii_uppercase
 
     infinites = []
@@ -33,7 +34,7 @@ def p1(d):
 
     for x in range(min_x, max_x + 1):
         for y in range(min_y, max_y + 1):
-            distances = [dist([x, y], coord) for coord in d]
+            distances = [manhattan_distance([x, y], coord) for coord in d]
             closest = distances.index(min(distances))
             if Counter(distances)[min(distances)] == 1:
                 near[closest] += 1
@@ -55,7 +56,7 @@ def p2(d):
 
     for x in range(min_x, max_x + 1):
         for y in range(min_y, max_y + 1):
-            distances = [dist([x, y], coord) for coord in d]
+            distances = [manhattan_distance([x, y], coord) for coord in d]
             total = sum(distances)
             if total < 10000:
                 size += 1
