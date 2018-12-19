@@ -17,10 +17,27 @@ class Node:
         return "{0} {1} {2} {3} {4}".format(self.name, self.prev, self.nxt, self.done, self.time)
 
     def __eq__(self, other):
-        return self.name == other.name
+        return isinstance(other, Node) and self.name == other.name
 
     def __lt__(self, other):
         return self.name < other.name
+
+
+class Worker:
+    def __init__(self):
+        self.node = None
+        self.time_worked = None
+
+    def assign(self, n):
+        self.node = n
+        self.time_worked = 0
+
+    def work(self):
+        self.time_worked += 1
+
+    def done(self):
+        self.node = None
+        self.time_worked = 0
 
 
 def parse_steps(lines):
@@ -71,28 +88,26 @@ def find_next_p1(nodes):
 def p2(d):
     steps = parse_steps(d)
     nodes = build_nodes(steps)
-    workers = [None] * NUM_WORKERS
+    workers = [Worker() for i in range(NUM_WORKERS)]
     time = 0
-    ns = find_next_p2(nodes, [])
+    ns = find_next_p2(nodes, workers)
 
-    while not (all([w is None for w in workers]) and len(ns) == 0):
+    while not (all([w.node is None for w in workers]) and len(ns) == 0):
         # assign everything to workers
         for i in range(len(workers)):
             if len(ns) == 0:
                 break
-            if workers[i] is None:
-                workers[i] = [ns[0], 0]
+            if workers[i].node is None:
+                workers[i].assign(ns[0])
                 del ns[0]
 
         # tick
-        for [i, worker] in enumerate(workers):
-            if worker is not None:
-                # increase time worked
-                worker[1] += 1
-                # check if done
-                if worker[1] == worker[0].time:
-                    worker[0].done = True
-                    workers[i] = None
+        for worker in workers:
+            if worker.node is not None:
+                worker.work()
+                if worker.time_worked == worker.node.time:
+                    worker.node.done = True
+                    worker.done()
 
         time += 1
         ns = find_next_p2(nodes, workers)
@@ -103,7 +118,7 @@ def p2(d):
 def find_next_p2(nodes, workers):
     ready = []
     for node in nodes:
-        if any([w != None and w[0] == node for w in workers]):
+        if any([None != w.node and w.node == node for w in workers]):
             continue
         if node.done:
             continue
