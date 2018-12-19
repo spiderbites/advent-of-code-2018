@@ -9,7 +9,7 @@ def p1_rec(data, total):
         return (rest, total + metadata_sum)
 
     else:
-        for i in range(num_children):
+        for _ in range(num_children):
             (rest, total) = p1_rec(rest, total)
         metadata_sum = sum(rest[:num_metadata])
         rest = rest[num_metadata:]
@@ -21,9 +21,6 @@ def p1(d):
 
 
 def p2(data):
-    if len(data) == 0:
-        return 0
-
     [num_children, num_metadata, *rest] = data
     if num_children == 0:
         value = sum(rest[:num_metadata])
@@ -32,7 +29,7 @@ def p2(data):
 
     else:
         child_values = []
-        for i in range(num_children):
+        for _ in range(num_children):
             (rest, value) = p2(rest)
             child_values.append(value)
         metadata = rest[:num_metadata]
