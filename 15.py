@@ -1,15 +1,10 @@
-from timeit import default_timer as timer
-
-import pdb
+from collections import deque
+import math
 
 WALL = '#'
 OPEN = '.'
 GOBLIN = 'G'
 ELF = 'E'
-
-
-def manhattan_dist(a, b):
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
 def first_in_reading_order(locations):
@@ -45,7 +40,7 @@ class Elf(Unit):
 
 
 class Grid:
-    def __init__(self, raw):
+    def __init__(self, raw, elf_ap=3):
         grid = []
         for (y, line) in enumerate(raw):
             grid.append([])
@@ -53,7 +48,7 @@ class Grid:
                 if char == GOBLIN:
                     grid[y].append(Goblin(x, y))
                 elif char == ELF:
-                    grid[y].append(Elf(x, y))
+                    grid[y].append(Elf(x, y, 200, elf_ap))
                 else:
                     grid[y].append(char)
         self.grid = grid
@@ -128,165 +123,67 @@ class Grid:
                 unique.append(item)
         return unique
 
-    # def closest(self, location, location_set):
-    #     # pdb.set_trace()
-    #     distances = [{"location": l, "dist": manhattan_dist(
-    #         location, l)} for l in location_set]
-    #     distances.sort(key=lambda x: x["dist"])
-    #     # pick top 5??
-    #     return [d["location"] for d in distances[:5]]
-
-    def build_distances(self, src, targets):
-        print(src)
-        # if src == [14, 8]:
-        #     pdb.set_trace()
-        src = str(src)
-        vertices = [str(v) for v in self.get_open_squares()]
-        vertices.append(src)
-        distances = {v: float('inf') for v in vertices}
-        prev = {v: [] for v in vertices}
+    def bfs(self, src, targets):
+        root = str(src)
         targets = [str(t) for t in targets]
 
-        distances[src] = 0
+        open_set = deque()  # unvisited nodes
+        closed_set = set()  # visited nodes
+        meta = dict()  # for storing every nodes parent
 
-        # pdb.set_trace()
+        meta[root] = None
+        open_set.append(root)
 
-        while len(vertices) > 0:
-            current = min({k: v for (k, v) in distances.items()
-                           if k in vertices}, key=distances.get)
-            vertices.remove(current)
+        while not len(open_set) == 0:
+            current = open_set.popleft()
 
-            if current in targets:
+            neighbours = [n for n in self.get_open_adjacent_squares(
+                eval(current)) if str(n) not in closed_set]
+
+            for n in neighbours:
+                n = str(n)
+                if n not in open_set:
+                    meta[n] = current
+                    open_set.append(n)
+
+            closed_set.add(current)
+
+        # construct the paths to each target
+        paths = []
+        for t in targets:
+            if t not in meta:
                 continue
+            path = [t]
+            while meta[t] is not None:
+                parent = meta[t]
+                path.append(parent)
+                t = parent
+            path.reverse()
+            paths.append(path)
 
-            # break if no targets in vertices
-            if all([t not in vertices for t in targets]):
-                break
-
-            neighbours = [str(square)
-                          for square in self.adjacent_squares(eval(current))]
-
-            neighbours = [n for n in neighbours if n in vertices and
-                          self.get_square_content(eval(n)) == OPEN]
-
-            for v in neighbours:
-                alt = distances[current] + 1
-                if alt <= distances[v]:
-                    distances[v] = alt
-                    prev[v] = current  # .append(current)
-                elif alt < distances[v]:
-                    distances[v] = alt
-                    prev[v] = current  # [current]
-
-        # find closest target
-        all_target_distances = {key: value for key,
-                                value in distances.items() if key in targets}
-
-        if len(all_target_distances.values()) == 0 or set(all_target_distances.values()) == set([float('inf')]):
+        if len(paths) == 0:
             return None
 
-        min_target_distance = min(all_target_distances.values())
-        eligible_targets = [
-            k for (k, v) in all_target_distances.items() if v == min_target_distance]
+        # find the best target
+        min_length = min(len(path) for path in paths)
+        eligible_targets = [p[-1] for p in paths if len(p) == min_length]
+        the_target = first_in_reading_order(
+            [eval(t) for t in eligible_targets])
 
-        the_target = str(first_in_reading_order(
-            [eval(t) for t in eligible_targets]))
+        return str(the_target)
 
-        # finding the first step on the path to that target
-        # first_steps = self.build_first_steps(src, the_target, prev)
-        # the_step = first_in_reading_order(
-        # [eval(s) for s in [first_steps])
+    def find_the_step(self, src, targets):
+        the_target = self.bfs(src, targets)
 
-        # pdb.set_trace()
-        possible_steps = self.get_open_adjacent_squares(eval(src))
-        distances = [self.find_distance(step, the_target)
-                     for step in possible_steps]
-        min_distance = min(distances)
-        possible_steps = [s[0] for s in zip(
-            possible_steps, distances) if s[1] == min_distance]
-        the_step = first_in_reading_order(possible_steps)
+        possible_steps = [str(s)
+                          for s in self.get_open_adjacent_squares(src)]
 
-        # the_step = eval(self.build_first_steps(src, the_target, prev))
-        # pdb.set_trace()
-        return the_step
+        if the_target is None:
+            return None
 
-    def build_first_steps(self, src, target, prev_map):
-        return self.build_first_steps_rec(src, target, prev_map, [])
+        the_step = self.bfs(the_target, possible_steps)
 
-    def build_first_steps_rec(self, src, current, prev_map, last_steps):
-        if len(prev_map[current]) == 0 or current == src:
-            return last_steps
-        else:
-            return self.build_first_steps_rec(src, prev_map[current], prev_map, current)
-
-    def find_distance(self, src, target):
-        src = str(src)
-        vertices = [str(v) for v in self.get_open_squares()]
-        vertices.append(src)
-        distances = {v: float('inf') for v in vertices}
-        target = str(target)
-
-        distances[src] = 0
-
-        while len(vertices) > 0:
-            current = min({k: v for (k, v) in distances.items()
-                           if k in vertices}, key=distances.get)
-            vertices.remove(current)
-
-            # if current == target:
-            #     continue
-
-            # break if no targets in vertices
-            if target not in vertices:
-                break
-
-            neighbours = [str(square)
-                          for square in self.adjacent_squares(eval(current))]
-
-            neighbours = [n for n in neighbours if n in vertices and
-                          self.get_square_content(eval(n)) == OPEN]
-
-            for v in neighbours:
-                alt = distances[current] + 1
-                if alt <= distances[v]:
-                    distances[v] = alt
-                elif alt < distances[v]:
-                    distances[v] = alt
-
-        return distances[target]
-
-
-# 1  S ← empty sequence
-# 2  u ← target
-# 3  if prev[u] is defined or u = source:          // Do something only if the vertex is reachable
-# 4      while u is defined:                       // Construct the shortest path with a stack S
-# 5          insert u at the beginning of S        // Push the vertex onto the stack
-# 6          u ← prev[u]                           // Traverse from target to source
-
-    # def find_distance(self, src, current, target, prev_map):
-    #     if len(prev_map[current]) == 0 or current == src:
-    #         return last_steps
-    #     if len(prev_map[current]) == 1:
-    #         return self.build_first_steps_rec(src, prev_map[current][0], prev_map, [current])
-    #     else:
-
-    # def build_first_steps(self, src, target, prev_map):
-    #     return self.build_first_steps_rec(src, target, prev_map, [])
-
-    # def build_first_steps_rec(self, src, current, prev_map, last_steps):
-    #     if len(prev_map[current]) == 0 or current == src:
-    #         return last_steps
-    #     if len(prev_map[current]) == 1:
-    #         return self.build_first_steps_rec(src, prev_map[current][0], prev_map, [current])
-    #     else:
-    #         last_steps = []
-    #         for prev in prev_map[current]:
-    #             last_steps = self.build_first_steps_rec(
-    #                 src, prev, prev_map, current)
-    #             for step in last_steps:
-    #                 if step not in last_steps:
-    #                     last_steps.append(step)
-    #         return last_steps
+        return eval(the_step)
 
     def attack(self, attacker, attackee):
         attackee.hp = attackee.hp - attacker.ap
@@ -312,9 +209,10 @@ class Grid:
         if len(enemies) == 0:
             enemies_in_range = self.enemies_in_range(enemy_type)
             if len(enemies_in_range) > 0:
-                next_step = self.build_distances(
+                next_step = self.find_the_step(
                     unit.location(), enemies_in_range)
-                if next_step is not None and next_step != [float('inf'), float('inf')]:
+
+                if next_step is not None:
                     [cur_x, cur_y] = unit.location()
                     [new_x, new_y] = next_step
 
@@ -344,10 +242,7 @@ class Grid:
     def run(self):
         num_completed_rounds = 0
         while True:
-            print('*******************')
-            print(num_completed_rounds)
-            print(self)
-            print('*******************')
+            print(num_completed_rounds, end=" ", flush=True)
             for u in self.units():
                 if self.game_over():
                     return num_completed_rounds * self.total_hitpoints()
@@ -357,19 +252,48 @@ class Grid:
                     else:
                         self.turn(u, Goblin)
             num_completed_rounds += 1
+        print('\n')
 
 
 def p1(data):
     grid = Grid(data)
-    print(grid)
     result = grid.run()
-    print(grid)
-
     return result
 
 
 def p2(data):
-    pass
+    grid = Grid(data, 1000)
+    total_elves = len(grid.elves())
+
+    # implementing a binary search to find the minimum ap for which all elves survive
+    min_attack_power = 4
+    max_attack_power = 1000  # decided on this number empirically
+    aps = [min_attack_power, max_attack_power]
+
+    while True:
+        cur_ap = math.floor(
+            (aps[1] + aps[0]) / 2)
+        print("\nElf attack power: {0}".format(cur_ap))
+        grid = Grid(data, cur_ap)
+        result = grid.run()
+
+        if len(grid.elves()) != total_elves:
+            # At least one elf died...
+            if aps[0] - aps[1] == 0:
+                # corner case, ap is too low between bounds are equal
+                aps = [cur_ap + 1, cur_ap + 1]
+            else:
+                # set bottom ap bound to midpoint + 1
+                aps[0] = cur_ap + 1
+        else:
+            # no dead elves!
+            if aps[1] - aps[0] <= 1:
+                # we've found the minimum ap for which this occurs
+                return result
+            else:
+                # set top ap bound to midpoint - 1
+                aps[1] = cur_ap - 1
+    return result
 
 
 if __name__ == "__main__":
